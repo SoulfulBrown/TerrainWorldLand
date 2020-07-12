@@ -8,8 +8,8 @@ using UnityEngine.Rendering;
 public class MeshGenerator : MonoBehaviour
 {
     Mesh mesh;
-    Vector3[] vertices;
-    int[] triangles;
+    [SerializeField] Vector3[] vertices;
+    [SerializeField] int[] triangles;
 
     [SerializeField] private int xSize = 20;
     [SerializeField] private int zSize = 20;
@@ -36,15 +36,15 @@ public class MeshGenerator : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        //if(prevX == xSize && prevZ == zSize  && prevD == density) { return ; }
-        //if(zSize <= 0 || xSize <= 0 || density <= 0) { return; }
+        if(prevX == xSize && prevZ == zSize  && prevD == density) { return ; }
+        if(zSize <= 0 || xSize <= 0 || density <= 0) { return; }
 
-        //StartCoroutine(CreateShape());
-        //UpdateMesh();
+        CreateShape();
+        UpdateMesh();
 
-        //prevZ = zSize;
-        //prevX = xSize;    
-        //prevD = density;
+        prevZ = zSize;
+        prevX = xSize;    
+        prevD = density;
     }
 
     public void GenerateMesh()
@@ -56,13 +56,50 @@ public class MeshGenerator : MonoBehaviour
     private void CreateShape()
     {
         vertices = new Vector3 [((xSize * density) + 1) * ((zSize * density) + 1)];
-
+        
+        //create flat grid
         for (int i = 0, z = 0; z <= zSize * density; z++)
         {
             for (int x = 0; x <= xSize * density; x++)
+            {         
+                vertices[i] = new Vector3((float)(x) / density, 0  , (float)(z) / density); 
+                i++;
+            }
+        }
+
+        //create spikes at standard points
+        for (int i = 0, z = 0; z <= zSize * density; z++)
+        {
+            for (int x = 0; x <= xSize * density ; x++)
             {
-                var y = Mathf.PerlinNoise(x * 0.3f, z*0.3f)  * 2.0f;
-                vertices[i] = new Vector3((float)(x) / density, y, (float)(z) / density);
+                if( x % density == 0 && z % density == 0)
+                {
+                    var y = Mathf.PerlinNoise(x * 0.3f, z*0.3f)  * 2.0f;            
+                    vertices[i] = new Vector3((float)(x) / density, y, (float)(z) / density);
+                }
+                i++;
+            }
+        }
+
+        //lerp in density points
+        //TODO: This curently looks at the next on the x and not the y make it do the thing looking at neighbours
+        for (int i = 0, z = 0; z <= zSize * density; z++)
+        {
+            var nextVector = 0;
+            var currentVector = 0;
+            for (int x = 0; x <= xSize * density; x++)
+            {         
+                if(x % density == 0 && z % density == 0)
+                {
+                    nextVector = i + density;
+                    currentVector = i;
+                }
+                else
+                {
+                    vertices[i] = new Vector3((float)(x) / density, vertices[currentVector].y - ((vertices[currentVector].y - vertices[nextVector].y) / (nextVector-currentVector)), (float)(z) / density); 
+                    currentVector = i;
+                }
+
                 i++;
             }
         }
