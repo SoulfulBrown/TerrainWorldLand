@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using UnityEngine.Rendering;
 
 public class MeshGenerator : MonoBehaviour
 {
@@ -23,6 +24,7 @@ public class MeshGenerator : MonoBehaviour
     private void Start()
     {
         mesh = new Mesh();
+        mesh.indexFormat = IndexFormat.UInt32;
         GetComponent<MeshFilter>().mesh = mesh;
 
         CreateShape();
