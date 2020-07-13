@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 using UnityEditor;
 using System.Linq;
 using UnityEngine.Rendering;
@@ -13,7 +14,7 @@ public class MeshGenerator : MonoBehaviour
 
     [SerializeField] private int xSize = 20;
     [SerializeField] private int zSize = 20;
-    [SerializeField] private int density = 1;
+    [SerializeField][Range(1,2)] private int density = 1;
 
     private int prevX = 0, prevZ = 0, prevD = 0;
 
@@ -62,7 +63,7 @@ public class MeshGenerator : MonoBehaviour
         {
             for (int x = 0; x <= xSize * density; x++)
             {         
-                vertices[i] = new Vector3((float)(x) / density, 0  , (float)(z) / density); 
+                vertices[i] = new Vector3((float)(x) / density, 0, (float)(z) / density); 
                 i++;
             }
         }
@@ -74,33 +75,74 @@ public class MeshGenerator : MonoBehaviour
             {
                 if( x % density == 0 && z % density == 0)
                 {
-                    var y = Mathf.PerlinNoise(x * 0.3f, z*0.3f)  * 2.0f;            
+                    var y = Mathf.PerlinNoise((x/density)*0.3f, (z/density)*0.3f)  * 2.0f;            
                     vertices[i] = new Vector3((float)(x) / density, y, (float)(z) / density);
                 }
                 i++;
             }
         }
 
-        //lerp in density points
-        //TODO: This curently looks at the next on the x and not the y make it do the thing looking at neighbours
-        for (int i = 0, z = 0; z <= zSize * density; z++)
+        if(density > 1)
         {
             var nextVector = 0;
             var currentVector = 0;
-            for (int x = 0; x <= xSize * density; x++)
-            {         
-                if(x % density == 0 && z % density == 0)
-                {
-                    nextVector = i + density;
-                    currentVector = i;
-                }
-                else
-                {
-                    vertices[i] = new Vector3((float)(x) / density, vertices[currentVector].y - ((vertices[currentVector].y - vertices[nextVector].y) / (nextVector-currentVector)), (float)(z) / density); 
-                    currentVector = i;
-                }
+            
+            var quads = new int[(xSize * density) * (zSize * density) *4];
 
-                i++;
+            int qVert = 0, quad = 0;
+
+            for(int z = 0; z < (zSize * density); z++)
+            {
+                for (int x = 0; x < (xSize * density); x++)
+                {
+                    quads[quad + 0] = qVert + 0;
+                    quads[quad + 1] = qVert + xSize* density + 1;
+                    quads[quad + 2] = qVert + xSize* density + 2;
+                    quads[quad + 3] = qVert + 1;
+                    qVert++;
+                    quad += 4;
+                }
+                qVert++;
+            }
+
+            //centre points
+            for (int i = 0, z = 0; z <= zSize ; z += density)
+            {  
+                for (int x = 0; x <= xSize ; x += density)
+                {         
+                    var centerIndex = i + xSize * density + 2;
+                    var yAvg = (vertices[centerIndex + xSize * density].y + vertices[centerIndex - xSize * density].y  + vertices[centerIndex + xSize * density + 2].y + vertices[centerIndex - (xSize * density + 2)].y) /4;
+                    vertices[centerIndex] = new Vector3(vertices[centerIndex].x, yAvg, vertices[centerIndex].z);
+                    i+=density;           
+                }
+            }
+
+            //centre neighbours
+            for (int i = 0, z = 0; z <= zSize ; z += density)
+            {  
+                for (int x = 0; x <= xSize ; x += density)
+                {         
+                    var leftIndex = i + (xSize * density) + 1;
+                    var rightIndex = i + (xSize * density + 1) + 2;
+                    var upIndex = i + 1 + ((xSize * density + 1)* 2);
+                    var downIndex = i + 1;
+                    //left
+                    vertices[leftIndex] = new Vector3(vertices[leftIndex].x, 
+                                                    (vertices[leftIndex + 1].y + vertices[leftIndex - xSize * density - 1].y  + vertices[leftIndex + xSize * density + 1].y) /3,
+                                                    vertices[leftIndex].z);
+                    //right
+                    vertices[rightIndex] = new Vector3(vertices[rightIndex].x, 
+                                                    (vertices[rightIndex - 1].y + vertices[rightIndex - xSize * density - 1].y  + vertices[rightIndex + xSize * density + 1].y) /3,
+                                                    vertices[rightIndex].z);   
+                    //up
+                    vertices[upIndex] = new Vector3(vertices[upIndex].x, 
+                                                    (vertices[upIndex - 1].y + vertices[upIndex + 1].y  + vertices[upIndex - xSize * density - 1].y) /3,
+                                                    vertices[upIndex].z);  
+                    //down
+                    vertices[downIndex] = new Vector3(vertices[downIndex].x, 
+                                                    (vertices[downIndex - 1].y + vertices[downIndex + 1].y  + vertices[downIndex + xSize * density + 1].y) /3,
+                                                    vertices[downIndex].z); 
+                }
             }
         }
 
